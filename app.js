@@ -6,11 +6,7 @@ async function fetchData() {
     `;
 
     try {
-        // CORS olmayan FUTURES Proxy
-        const proxy = "https://cors.eu.org/";
-        const url = "https://contract.mexc.com/api/v1/contract/ticker";
-
-        const res = await fetch(proxy + url);
+        const res = await fetch("/api/ticker");  // artık backend’ten çekiyoruz
         const json = await res.json();
 
         let data = json.data;
