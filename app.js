@@ -2,17 +2,34 @@ console.log("Dashboard JS Yüklendi");   // DEBUG
 
 const API_URL = "/api/ticker";
 
-/* Hacim Formatlama */
+/* ------------------------------
+   PumpScore Neon Class Function
+-------------------------------- */
+function pumpClass(score) {
+    score = Number(score);
+    if (isNaN(score)) return "pump-low";
+
+    if (score > 100) return "pump-high";
+    if (score > 20) return "pump-mid";
+    return "pump-low";
+}
+
+/* ------------------------------
+   Hacim Formatlama
+-------------------------------- */
 function formatVolume(num) {
     if (!num || isNaN(num)) return "-";
     const n = Number(num);
     if (n >= 1e12) return (n / 1e12).toFixed(2) + "T";
-    if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
-    if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
-    if (n >= 1e3) return (n / 1e3).toFixed(2) + "K";
+    if (n >= 1e9)  return (n / 1e9).toFixed(2)  + "B";
+    if (n >= 1e6)  return (n / 1e6).toFixed(2)  + "M";
+    if (n >= 1e3)  return (n / 1e3).toFixed(2)  + "K";
     return n.toFixed(2);
 }
 
+/* ------------------------------
+   Veri Çekme ve Tablo Güncelleme
+-------------------------------- */
 async function fetchData() {
     try {
         console.log("Veri çekiliyor...");    // DEBUG
@@ -26,21 +43,29 @@ async function fetchData() {
             return;
         }
 
-        let data = json.data.filter(c => c.symbol.endsWith("USDT")).slice(0, 20);
+        // USDT çiftleri + ilk 20 filtre
+        let data = json.data
+            .filter(c => c.symbol.endsWith("USDT"))
+            .slice(0, 20);
 
         let html = "";
         data.forEach((coin, i) => {
 
+            // PRICE
             const price = Number(coin.price) || 0;
+
+            // CHANGE
             const rawChange = Number(coin.change);
             const change = isNaN(rawChange) ? 0 : rawChange;
             const changePercent = (change * 100).toFixed(2);
             const changeColor = change >= 0 ? "green" : "red";
 
+            // VOLUME
             const volume = formatVolume(coin.volume);
-            const pumpScore = isNaN(Number(coin.pumpScore))
-                ? "0.00"
-                : Number(coin.pumpScore).toFixed(2);
+
+            // PUMP SCORE (Neon)
+            const pumpScore =
+                isNaN(Number(coin.pumpScore)) ? 0 : Number(coin.pumpScore);
 
             html += `
                 <tr>
@@ -50,7 +75,13 @@ async function fetchData() {
                     <td class="${changeColor}">${changePercent}%</td>
                     <td class="volume">${volume}</td>
                     <td>${coin.exchange}</td>
-                    <td class="pumpscore">${pumpScore}</td>
+
+                    <!-- PUMP SCORE - NEON -->
+                    <td>
+                        <span class="${pumpClass(pumpScore)}">
+                            ${pumpScore.toFixed(2)}
+                        </span>
+                    </td>
                 </tr>
             `;
         });
@@ -63,5 +94,8 @@ async function fetchData() {
     }
 }
 
+/* ------------------------------
+   Otomatik Güncelleme
+-------------------------------- */
 fetchData();
 setInterval(fetchData, 6000);
