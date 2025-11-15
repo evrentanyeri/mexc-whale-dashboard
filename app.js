@@ -1,63 +1,64 @@
 async function fetchData() {
-    const tbody = document.getElementById("cryptoBody");
+  const tableBody = document.getElementById("signalTableBody");
 
-    tbody.innerHTML = `
-        <tr><td colspan="6" class="loading">Yükleniyor...</td></tr>
-    `;
+  try {
+    const res = await fetch("/api/ticker");
+    const json = await res.json();
 
-    try {
-        const res = await fetch("/api/ticker");  // artık backend’ten çekiyoruz
-        const json = await res.json();
-
-        let data = json.data;
-
-        let futures = data.filter(item => item.symbol.endsWith("_USDT"));
-
-        let formatted = futures.map((c) => ({
-            symbol: c.symbol.replace("_", ""),
-            price: parseFloat(c.lastPrice),
-            percent: parseFloat((c.riseFallRate * 100).toFixed(2)),
-            volume: formatVolume(c.volume),
-            exchange: "MEXC Futures"
-        }));
-
-        formatted = formatted.sort((a, b) => b.percent - a.percent).slice(0, 20);
-
-        tbody.innerHTML = "";
-
-        formatted.forEach((coin, index) => {
-            const row = document.createElement("tr");
-
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${coin.symbol}</td>
-                <td>${coin.price}</td>
-                <td style="color:${coin.percent >= 0 ? "lime" : "red"}">
-                    ${coin.percent}%
-                </td>
-                <td>${coin.volume}</td>
-                <td>${coin.exchange}</td>
-            `;
-
-            tbody.appendChild(row);
-        });
-
-    } catch (err) {
-        console.error("Futures API Hatası:", err);
-        tbody.innerHTML = `
-            <tr><td colspan="6" class="loading" style="color:red">
-                Futures verisi alınamadı!
-            </td></tr>
-        `;
+    if (!json.success) {
+      tableBody.innerHTML = `
+        <tr><td colspan="7" style="color:red; text-align:center;">
+          API Hatası: ${json.error}
+        </td></tr>`;
+      return;
     }
+
+    const data = json.data;
+
+    tableBody.innerHTML = "";
+
+    data.forEach((coin, index) => {
+      const row = document.createElement("tr");
+
+      // fiyat
+      const price = coin.price ? coin.price.toFixed(4) : "-";
+
+      // değişim rengi
+      const changeColor = coin.change >= 0 ? "lightgreen" : "red";
+      const changePercent = coin.change
+        ? (coin.change * 100).toFixed(2)
+        : "-";
+
+      // hacim formatla
+      const formatVolume = (v) => {
+        if (v >= 1_000_000_000) return (v / 1_000_000_000).toFixed(2) + "B";
+        if (v >= 1_000_000) return (v / 1_000_000).toFixed(2) + "M";
+        if (v >= 1_000) return (v / 1_000).toFixed(2) + "K";
+        return v;
+      };
+
+      row.innerHTML = `
+        <td>${index + 1}</td>
+        <td>${coin.symbol}</td>
+        <td>${price}</td>
+        <td style="color:${changeColor};">${changePercent}%</td>
+        <td>${formatVolume(coin.volume)}</td>
+        <td>${coin.exchange}</td>
+        <td style="font-weight:bold; color:#ffd35a;">${coin.pumpScore}</td>
+      `;
+
+      tableBody.appendChild(row);
+    });
+
+  } catch (err) {
+    console.error("Dashboard Hatası:", err);
+    tableBody.innerHTML = `
+      <tr><td colspan="7" style="color:red; text-align:center;">
+        Dashboard Hatası: ${err}
+      </td></tr>`;
+  }
 }
 
-function formatVolume(num) {
-    if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + "B";
-    if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
-    if (num >= 1_000) return (num / 1_000).toFixed(2) + "K";
-    return num.toFixed(2);
-}
-
-setInterval(fetchData, 8000);
+// 10 saniyede bir yenile
 fetchData();
+setInterval(fetchData, 10000);
