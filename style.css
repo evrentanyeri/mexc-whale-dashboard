@@ -1,63 +1,74 @@
 body {
-    margin: 0;
-    padding: 0;
+    background: #0b1220;
+    color: white;
     font-family: "Courier New", monospace;
-    background: #0d1b2a;
-    color: #e0e1dd;
-}
-
-header {
-    background: #1b263b;
-    padding: 20px;
-    text-align: left;
-    padding-left: 40px;
+    text-align: center;
 }
 
 header h1 {
-    margin: 0;
-    color: #e0e1dd;
-    font-size: 24px;
+    font-size: 38px;
+    margin-top: 25px;
+    text-shadow: 0 0 15px #3ac1ff;
 }
 
-main {
-    text-align: center;
-    margin-top: 40px;
+h2 {
+    font-size: 30px;
+    margin-bottom: 25px;
 }
 
-main h2 {
-    font-size: 28px;
-    margin-bottom: 30px;
-}
-
-.crypto-table {
-    width: 85%;
+.table-container {
+    width: 95%;
     margin: auto;
+}
+
+table {
+    width: 100%;
     border-collapse: collapse;
-    background: #1b263b;
+    font-size: 20px;
+}
+
+thead th {
+    padding: 14px;
+    font-size: 22px;
+    letter-spacing: 2px;
+}
+
+tbody tr {
+    background: rgba(255,255,255,0.03);
+    margin-bottom: 6px;
     border-radius: 10px;
-    overflow: hidden;
 }
 
-.crypto-table th {
-    padding: 14px;
-    background: #0d1b2a;
-    font-size: 16px;
-    color: #e0e1dd;
+tbody tr:hover {
+    background: rgba(255,255,255,0.08);
+    transition: 0.15s;
 }
 
-.crypto-table td {
-    padding: 14px;
-    border-bottom: 1px solid #415a77;
-    text-align: center;
+td {
+    padding: 12px;
 }
 
-.crypto-table tr:hover {
-    background: #415a77;
+/* Hacim Neon */
+td.volume {
+    color: #33ccff;
+    font-weight: 700;
+    text-shadow: 0 0 8px #33ccff, 0 0 16px #33ccff;
 }
 
+/* Pump Skor Neon */
+td.pumpscore {
+    color: #ffea00;
+    font-weight: 800;
+    text-shadow: 0 0 10px #ffea00, 0 0 20px #ffd900;
+}
+
+/* Değişim renkleri */
+.red { color: #ff4d4d; }
+.green { color: #4dff7a; }
+
+/* Yükleniyor */
 .loading {
-    padding: 20px;
-    text-align: center;
-    font-size: 18px;
-    color: #e0e1dd;
+    padding: 30px;
+    font-size: 22px;
+    text-shadow: 0 0 10px white;
 }
