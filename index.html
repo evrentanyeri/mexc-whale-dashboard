@@ -1,43 +1,18 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Balina Avcısı Dashboard</title>
-    <!-- CSS DOSYASI AYNI KLASÖRDE -->
-    <link rel="stylesheet" href="style.css">
-</head>
-
-<body>
-
-    <header>
-        <h1>🐋 Balina Avcısı Dashboard</h1>
-    </header>
-
-    <main>
-        <h2>Canlı Kripto Sinyalleri</h2>
-
-        <table class="crypto-table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Coin</th>
-                    <th>Fiyat</th>
-                    <th>Değişim (%)</th>
-                    <th>Hacim</th>
-                    <th>Borsa</th>
-                </tr>
-            </thead>
-
-            <tbody id="cryptoBody">
-                <tr>
-                    <td colspan="6" class="loading">Yükleniyor...</td>
-                </tr>
-            </tbody>
-        </table>
-    </main>
-
-    <!-- JS DOSYASI DA AYNI KLASÖRDE -->
-    <script src="app.js"></script>
-</body>
-</html>
+<table id="signalTable">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Coin</th>
+            <th>Fiyat</th>
+            <th>Değişim (%)</th>
+            <th>Hacim</th>
+            <th>Borsa</th>
+            <th>Pump Skoru</th> <!-- 🔥 EKLENEN SÜTUN -->
+        </tr>
+    </thead>
+    <tbody id="signalTableBody">
+        <tr>
+            <td colspan="7" style="text-align:center;">Yükleniyor...</td>
+        </tr>
+    </tbody>
+</table>
