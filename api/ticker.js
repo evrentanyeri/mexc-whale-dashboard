@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   try {
-    // 1) Tüm sözleşme listesi
+    // 1) Sözleşme listesini çek
     const listRes = await fetch("https://contract.mexc.com/api/v1/contract/detail");
     const listJson = await listRes.json();
 
@@ -12,75 +12,78 @@ export default async function handler(req, res) {
       });
     }
 
-    // 👉 Sadece USDT_Perpetual sözleşmeler
-    const contracts = listJson.data.filter(c => c.symbol.endsWith("_USDT"));
-    const symbols = contracts.map(c => c.symbol);
+    // Sadece USDT perpetual sözleşmeler
+    const symbols = listJson.data
+      .filter(c => c.symbol.endsWith("_USDT"))
+      .map(c => c.symbol);
 
-    // 2) DOĞRU TICKER ENDPOINT → tüm perpetual tickers
-    const tickRes = await fetch("https://contract.mexc.com/api/v1/contract/tickers");
-    const tickJson = await tickRes.json();
-
-    if (!tickJson || !tickJson.data) {
-      return res.status(500).json({
-        success: false,
-        error: "MEXC ticker verisi hatalı",
-        raw: tickJson
-      });
-    }
-
-    // tickerları map formatına çevir
-    const ticks = {};
-    tickJson.data.forEach(t => {
-      ticks[t.symbol] = t;
-    });
+    const results = [];
 
     // PumpScore hesaplama
     function calcPumpScore(price, change, volume) {
       if (!price || !volume) return 0;
-
-      const ch = parseFloat(change);
-      const vol = parseFloat(volume);
-      const p = parseFloat(price);
-
-      return (Math.abs(ch) * 12) + (vol / 10000000) + (p / 8000);
+      return (
+        Math.abs(change) * 12 +
+        volume / 10000000 +
+        price / 8000
+      );
     }
 
-    // Sonuçları oluştur
-    const processed = symbols.map((sym, idx) => {
-      const t = ticks[sym];
+    // 2) Her symbol için tek tek ticker isteği at
+    for (let i = 0; i < symbols.length; i++) {
+      const sym = symbols[i];
 
-      if (!t) {
-        return {
-          id: idx + 1,
+      try {
+        const url = `https://contract.mexc.com/api/v1/contract/ticker?symbol=${sym}`;
+        const tickRes = await fetch(url);
+        const tickJson = await tickRes.json();
+
+        if (!tickJson || !tickJson.data) {
+          results.push({
+            id: i + 1,
+            symbol: sym,
+            price: null,
+            change: null,
+            volume: null,
+            pumpScore: 0,
+            exchange: "MEXC Futures"
+          });
+          continue;
+        }
+
+        const t = tickJson.data;
+
+        const price = parseFloat(t.lastPrice || 0);
+        const change = parseFloat((t.changeRate || 0) * 100);
+        const volume = parseFloat(t.volume || 0);
+
+        results.push({
+          id: i + 1,
+          symbol: sym,
+          price,
+          change,
+          volume,
+          pumpScore: parseFloat(calcPumpScore(price, change, volume).toFixed(2)),
+          exchange: "MEXC Futures"
+        });
+
+      } catch (err) {
+        results.push({
+          id: i + 1,
           symbol: sym,
           price: null,
           change: null,
           volume: null,
-          exchange: "MEXC Futures",
-          pumpScore: 0
-        };
+          pumpScore: 0,
+          exchange: "MEXC Futures"
+        });
       }
+    }
 
-      const price = parseFloat(t.lastPrice);
-      const change = parseFloat(t.changeRate * 100).toFixed(2);
-      const volume = parseFloat(t.volume);
-
-      return {
-        id: idx + 1,
-        symbol: sym,
-        price: price,
-        change: change,
-        volume: volume,
-        exchange: "MEXC Futures",
-        pumpScore: parseFloat(calcPumpScore(price, change, volume).toFixed(2))
-      };
-    });
-
-    // PumpScore’a göre sırala
-    processed.sort((a, b) => b.pumpScore - a.pumpScore);
-
-    // Sadece TOP 20
-    const top20 = processed.slice(0, 20);
+    // 3) PumpScore’a göre sırala → İlk 20 al
+    const top20 = results
+      .sort((a, b) => b.pumpScore - a.pumpScore)
+      .slice(0, 20);
 
     res.status(200).json({
       success: true,
