@@ -1,53 +1,39 @@
 export default async function handler(req, res) {
     try {
+        const symbols = [
+            "BTC_USDT","ETH_USDT","SOL_USDT","ZEC_USDT","XRP_USDT","SUI_USDT",
+            "LTC_USDT","COAI_USDT","CROSS_USDT","STRK_USDT","DASH_USDT",
+            "BEAT_USDT","PIEVERSE_USDT","ASTER_USDT","MYX_USDT","TAO_USDT",
+            "DREAMSX402_USDT","BULLISH_USDT","DOGE_USDT","SOONNETWORK_USDT"
+        ];
 
-        const r = await fetch("https://contract.mexc.com/api/v1/contract/ticker");
-        const raw = await r.json();
+        let results = [];
 
-        if (!raw.success || !raw.data) {
-            return res.status(500).json({
-                success: false,
-                error: "MEXC Futures veri hatası",
-                raw: raw
-            });
-        }
+        for (let sym of symbols) {
+            const r = await fetch(`https://contract.mexc.com/api/v1/contract/ticker?symbol=${sym}`);
+            const json = await r.json();
 
-        // Sadece USDT perpetual filtrele
-        let filtered = raw.data.filter(c => c.symbol.endsWith("_USDT"));
-
-        // PumpScore hesaplama
-        const result = filtered.map((coin, index) => {
-
-            const price = Number(coin.lastPrice);
-            const change = Number(coin.riseFall);  // MEXC: riseFall = yüzde değil SAYI
-            const volume = Number(coin.amount24);  // 24 saatlik USD volume
-
-            let pumpScore = 0;
-
-            if (!isNaN(change) && !isNaN(volume)) {
-                pumpScore = (change * volume) / 1_000_000;
+            if (json.data) {
+                results.push({
+                    symbol: sym,
+                    price: Number(json.data.lastPrice),
+                    change: Number(json.data.priceChangeRate),   // ← gerçek değişim %
+                    volume: Number(json.data.volume24),          // ← gerçek 24h hacim
+                    exchange: "MEXC Futures",
+                    pumpScore: 0
+                });
             }
-
-            return {
-                id: index + 1,
-                symbol: coin.symbol,
-                price: price,
-                change: change / 100,      // yüzdeye çevirme → örn: 28 → 0.28 (%28)
-                volume: volume,
-                pumpScore: pumpScore,
-                exchange: "MEXC Futures"
-            };
-        });
+        }
 
         res.status(200).json({
             success: true,
-            data: result
+            data: results
         });
 
     } catch (err) {
         res.status(500).json({
             success: false,
-            error: "API Hatası",
+            error: "Backend Error",
             details: err.toString()
         });
     }
