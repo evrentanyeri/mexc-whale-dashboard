@@ -1,55 +1,53 @@
 export default async function handler(req, res) {
   try {
-    const response = await fetch(
-      "https://contract.mexc.com/api/v1/contract/detail",
-      {
-        method: "GET",
-        headers: {
-          "Accept": "application/json",
-          "User-Agent": "Mozilla/5.0",
-        }
+    // 1) Coin listesini çek
+    const detailRes = await fetch("https://contract.mexc.com/api/v1/contract/detail");
+    const detailJson = await detailRes.json();
+
+    if (!detailJson.data) {
+      return res.status(500).json({ success: false, error: "Sözleşme listesi alınamadı", raw: detailJson });
+    }
+
+    const symbols = detailJson.data.map(c => c.symbol);
+
+    // Sadece ilk 30 coin’e ticker isteği
+    const limited = symbols.slice(0, 30);
+
+    const results = [];
+
+    for (let i = 0; i < limited.length; i++) {
+      const sym = limited[i];
+
+      const tickerRes = await fetch(
+        `https://contract.mexc.com/api/v1/contract/ticker?symbol=${sym}`
+      );
+
+      const tickerJson = await tickerRes.json();
+
+      if (tickerJson.success && tickerJson.data) {
+        const d = tickerJson.data;
+        results.push({
+          id: i + 1,
+          symbol: sym,
+          price: Number(d.fairPrice || 0),
+          change: Number(d.riseFallRate || 0),
+          volume: Number(d.volume24 || 0),
+          exchange: "MEXC Futures"
+        });
       }
-    );
-
-    if (!response.ok) {
-      return res.status(500).json({ success: false, error: "MEXC HTTP hatası" });
     }
 
-    const json = await response.json();
+    // Pump Score
+    results.forEach(r => {
+      r.pumpScore = Number(((r.volume / 1_000_000) * 0.4 + r.change * 2).toFixed(2));
+    });
 
-    if (!json.data) {
-      return res.status(500).json({
-        success: false,
-        error: "MEXC veri formatı hatalı",
-        raw: json
-      });
-    }
+    // Skorla sırala + İlk 20
+    const finalData = results.sort((a, b) => b.pumpScore - a.pumpScore).slice(0, 20);
 
-    // Pump score fonksiyonu
-    const calcPumpScore = (vol, change) => {
-      return Number(((vol / 1_000_000) * 0.5 + change * 2).toFixed(2));
-    };
-
-    const coins = json.data.map((item, index) => ({
-      id: index + 1,
-      symbol: item.symbol,
-      price: Number(item.fairPrice),
-      change: Number(item.riseFallRate),
-      volume: Number(item.volume24),
-      pumpScore: calcPumpScore(Number(item.volume24), Number(item.riseFallRate)),
-      exchange: "MEXC Futures"
-    }));
-
-    // Pump skoruna göre sırala
-    const sorted = coins.sort((a, b) => b.pumpScore - a.pumpScore).slice(0, 20);
-
-    return res.status(200).json({ success: true, data: sorted });
+    return res.status(200).json({ success: true, data: finalData });
 
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      error: "Sunucu hatası",
-      detail: err.toString(),
-    });
+    return res.status(500).json({ success: false, error: err.toString() });
   }
 }
