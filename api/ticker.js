@@ -1,55 +1,53 @@
 export default async function handler(req, res) {
   try {
-    // MEXC Perpetual Futures sözleşme listesi
+    // 1) Tüm sözleşme listesi
     const listRes = await fetch("https://contract.mexc.com/api/v1/contract/detail");
     const listJson = await listRes.json();
 
     if (!listJson || !listJson.data) {
       return res.status(500).json({
         success: false,
-        error: "MEXC veri formatı hatalı",
+        error: "MEXC sözleşme listesi hatalı",
         raw: listJson
       });
     }
 
-    // 👉 Sadece USDT perpetual sözleşmelerini filtrele
-    const usdtPerps = listJson.data.filter(c => c.symbol.endsWith("_USDT"));
+    // 👉 Sadece USDT_Perpetual sözleşmeler
+    const contracts = listJson.data.filter(c => c.symbol.endsWith("_USDT"));
+    const symbols = contracts.map(c => c.symbol);
 
-    // Sözleşme adlarını al
-    const symbols = usdtPerps.map(c => c.symbol);
-
-    // 🔥 Tüm coinlerin güncel ticker verisini al
-    const tickRes = await fetch("https://contract.mexc.com/api/v1/contract/ticker");
+    // 2) DOĞRU TICKER ENDPOINT → tüm perpetual tickers
+    const tickRes = await fetch("https://contract.mexc.com/api/v1/contract/tickers");
     const tickJson = await tickRes.json();
 
     if (!tickJson || !tickJson.data) {
       return res.status(500).json({
         success: false,
-        error: "Ticker verisi okunamadı",
+        error: "MEXC ticker verisi hatalı",
         raw: tickJson
       });
     }
 
-    // Gelen tick verisini sözlük formatına çevir
-    const tickMap = {};
+    // tickerları map formatına çevir
+    const ticks = {};
     tickJson.data.forEach(t => {
-      tickMap[t.symbol] = t;
+      ticks[t.symbol] = t;
     });
 
-    // 🔥 PumpScore hesaplama
+    // PumpScore hesaplama
     function calcPumpScore(price, change, volume) {
       if (!price || !volume) return 0;
 
-      const ch = change ? parseFloat(change) : 0;
+      const ch = parseFloat(change);
       const vol = parseFloat(volume);
       const p = parseFloat(price);
 
-      return (Math.abs(ch) * 12) + (vol / 10000000) + (p / 5000);
+      return (Math.abs(ch) * 12) + (vol / 10000000) + (p / 8000);
     }
 
-    // 🔥 Nihai coin listesi
+    // Sonuçları oluştur
     const processed = symbols.map((sym, idx) => {
-      const t = tickMap[sym];
+      const t = ticks[sym];
 
       if (!t) {
         return {
@@ -67,8 +65,6 @@ export default async function handler(req, res) {
       const change = parseFloat(t.changeRate * 100).toFixed(2);
       const volume = parseFloat(t.volume);
 
-      const score = calcPumpScore(price, change, volume);
-
       return {
         id: idx + 1,
         symbol: sym,
@@ -76,25 +72,25 @@ export default async function handler(req, res) {
         change: change,
         volume: volume,
         exchange: "MEXC Futures",
-        pumpScore: parseFloat(score.toFixed(2))
+        pumpScore: parseFloat(calcPumpScore(price, change, volume).toFixed(2))
       };
     });
 
-    // 🔥 PumpScore’a göre büyükten küçüğe sırala
+    // PumpScore’a göre sırala
     processed.sort((a, b) => b.pumpScore - a.pumpScore);
 
-    // 🔥 SADECE TOP 20
+    // Sadece TOP 20
     const top20 = processed.slice(0, 20);
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       data: top20
     });
 
   } catch (err) {
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
-      error: "MEXC bağlantı hatası",
+      error: "Sunucu hatası",
       details: err.toString()
     });
   }
