@@ -1,64 +1,66 @@
 async function fetchData() {
-  const tableBody = document.getElementById("signalTableBody");
+    try {
+        const r = await fetch("/api/ticker");
+        const data = await r.json();
 
-  try {
-    const res = await fetch("/api/ticker");
-    const json = await res.json();
+        if (!data.success || !data.data) {
+            throw new Error("API veri yapısı hatalı");
+        }
 
-    if (!json.success) {
-      tableBody.innerHTML = `
-        <tr><td colspan="7" style="color:red; text-align:center;">
-          API Hatası: ${json.error}
-        </td></tr>`;
-      return;
+        const tbody = document.getElementById("signalTableBody");
+        tbody.innerHTML = "";
+
+        const coins = data.data.slice(0, 20); // sadece ilk 20 coin
+
+        coins.forEach((coin, index) => {
+
+            // güvenli sayı dönüştürme
+            const price = Number(coin.price);
+            const change = Number(coin.change);
+            const volume = Number(coin.volume);
+            const pumpScore = Number(coin.pumpScore);
+
+            // bozuk değerleri düzelt (NaN ise '-' göster)
+            const formattedPrice = isNaN(price) ? "-" : price.toFixed(4);
+            const formattedChange = isNaN(change) ? "-" : (change * 100).toFixed(2) + "%";
+            const formattedVolume = isNaN(volume) ? "-" : volume.toLocaleString();
+            const formattedPump = isNaN(pumpScore) ? "-" : pumpScore.toFixed(2);
+
+            const row = `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${coin.symbol}</td>
+                    <td>${formattedPrice}</td>
+
+                    <td style="color:${change >= 0 ? "lightgreen" : "red"}">
+                        ${formattedChange}
+                    </td>
+
+                    <td>${formattedVolume}</td>
+                    <td>${coin.exchange}</td>
+
+                    <td style="color:${pumpScore >= 0 ? "gold" : "red"}">
+                        ${formattedPump}
+                    </td>
+                </tr>
+            `;
+
+            tbody.innerHTML += row;
+        });
+
+    } catch (err) {
+        console.error("Dashboard Hatası:", err);
+
+        document.getElementById("signalTableBody").innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center;color:red;">
+                    Dashboard Hatası: ${err.message}
+                </td>
+            </tr>
+        `;
     }
-
-    const data = json.data;
-    tableBody.innerHTML = "";
-
-    data.forEach((coin, index) => {
-      const row = document.createElement("tr");
-
-      // fiyat
-      const price = isNaN(coin.price) ? "-" : coin.price.toFixed(4);
-
-      // değişim rengi
-      const changeColor =
-        coin.change >= 0 ? "lightgreen" : "red";
-
-      const changePercent =
-        isNaN(coin.change) ? "-" : (coin.change * 100).toFixed(2);
-
-      // hacim formatla
-      const formatVolume = (v) => {
-        if (v >= 1_000_000_000) return (v / 1_000_000_000).toFixed(2) + "B";
-        if (v >= 1_000_000) return (v / 1_000_000).toFixed(2) + "M";
-        if (v >= 1_000) return (v / 1_000).toFixed(2) + "K";
-        return v;
-      };
-
-      row.innerHTML = `
-        <td>${index + 1}</td>
-        <td>${coin.symbol}</td>
-        <td>${price}</td>
-        <td style="color:${changeColor};">${changePercent}%</td>
-        <td>${formatVolume(coin.volume)}</td>
-        <td>${coin.exchange}</td>
-        <td style="font-weight:bold; color:#ffd35a;">${coin.pumpScore}</td>
-      `;
-
-      tableBody.appendChild(row);
-    });
-
-  } catch (err) {
-    console.error("Dashboard Hatası:", err);
-    tableBody.innerHTML = `
-      <tr><td colspan="7" style="color:red; text-align:center;">
-        Dashboard Hatası: ${err}
-      </td></tr>`;
-  }
 }
 
-// 10 saniyede bir yenile
+// 5 saniyede bir yenile
+setInterval(fetchData, 5000);
 fetchData();
-setInterval(fetchData, 10000);
