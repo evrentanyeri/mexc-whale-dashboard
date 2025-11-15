@@ -1,9 +1,10 @@
+console.log("Dashboard JS Yüklendi");   // DEBUG
+
 const API_URL = "/api/ticker";
 
-/* Hacim Formatlama B-M-K-T */
+/* Hacim Formatlama */
 function formatVolume(num) {
     if (!num || isNaN(num)) return "-";
-
     const n = Number(num);
     if (n >= 1e12) return (n / 1e12).toFixed(2) + "T";
     if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
@@ -14,7 +15,9 @@ function formatVolume(num) {
 
 async function fetchData() {
     try {
-        const res = await fetch(API_URL);
+        console.log("Veri çekiliyor...");    // DEBUG
+
+        const res = await fetch(API_URL + "?t=" + Date.now()); 
         const json = await res.json();
 
         if (!json.success || !json.data) {
@@ -23,28 +26,21 @@ async function fetchData() {
             return;
         }
 
-        let data = json.data;
-
-        // Sadece USDT Perp
-        data = data.filter(coin => coin.symbol.endsWith("USDT"));
-
-        // İlk 20
-        data = data.slice(0, 20);
+        let data = json.data.filter(c => c.symbol.endsWith("USDT")).slice(0, 20);
 
         let html = "";
-
         data.forEach((coin, i) => {
-            const price = Number(coin.price) || 0;
 
-            // NULL değişim durumunu düzelt
+            const price = Number(coin.price) || 0;
             const rawChange = Number(coin.change);
-            const changeValue = isNaN(rawChange) ? 0 : rawChange;  
-            const changePercent = (changeValue * 100).toFixed(2);
-            const changeColor = changeValue >= 0 ? "green" : "red";
+            const change = isNaN(rawChange) ? 0 : rawChange;
+            const changePercent = (change * 100).toFixed(2);
+            const changeColor = change >= 0 ? "green" : "red";
 
             const volume = formatVolume(coin.volume);
-            const pump = Number(coin.pumpScore);
-            const pumpScore = isNaN(pump) ? "0.00" : pump.toFixed(2);
+            const pumpScore = isNaN(Number(coin.pumpScore))
+                ? "0.00"
+                : Number(coin.pumpScore).toFixed(2);
 
             html += `
                 <tr>
@@ -60,11 +56,10 @@ async function fetchData() {
         });
 
         document.getElementById("signalBody").innerHTML = html;
+        console.log("Tablo güncellendi.");   // DEBUG
 
     } catch (err) {
-        console.log("Hata:", err);
-        document.getElementById("signalBody").innerHTML =
-            `<tr><td colspan="7" class="loading">Dashboard Hatası</td></tr>`;
+        console.error("Fetch Hatası:", err);
     }
 }
 
