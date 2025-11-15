@@ -1,40 +1,36 @@
-<script>
-async function fetchData() {
-  try {
-    const res = await fetch("/api/ticker");
-    const json = await res.json();
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Balina Avcısı Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
 
-    if (!json.success) {
-      document.getElementById("signalTable").innerHTML =
-        `<tr><td colspan="7" class="error">API Hatası: ${json.error}</td></tr>`;
-      return;
-    }
+<body>
 
-    const data = json.data;
-    const table = document.getElementById("signalTable");
+<h1>🐋 Balina Avcısı Dashboard</h1>
 
-    table.innerHTML = "";
+<h2>Canlı Kripto Sinyalleri</h2>
 
-    data.forEach((row, i) => {
-      table.innerHTML += `
+<table id="signalTable">
+    <thead>
         <tr>
-          <td>${i + 1}</td>
-          <td>${row.symbol}</td>
-          <td>${row.price}</td>
-          <td>${row.change}%</td>
-          <td>${row.volume}</td>
-          <td>${row.exchange}</td>
-          <td>${row.pumpScore}</td>
+            <th>#</th>
+            <th>Coin</th>
+            <th>Fiyat</th>
+            <th>Değişim (%)</th>
+            <th>Hacim</th>
+            <th>Borsa</th>
+            <th>Pump Skoru</th>
         </tr>
-      `;
-    });
+    </thead>
 
-  } catch (err) {
-    document.getElementById("signalTable").innerHTML =
-      `<tr><td colspan="7" class="error">API okunamadı</td></tr>`;
-  }
-}
+    <tbody id="signalTableBody">
+        <tr><td colspan="7" style="text-align:center;">Yükleniyor...</td></tr>
+    </tbody>
+</table>
 
-fetchData();
-setInterval(fetchData, 5000);
-</script>
+<script src="app.js"></script>
+
+</body>
+</html>
