@@ -1,57 +1,96 @@
-// /api/ticker.js
-
 export default async function handler(req, res) {
   try {
-    const r = await fetch("https://contract.mexc.com/api/v1/contract/ticker");
-    const json = await r.json();
+    // MEXC Perpetual Futures sözleşme listesi
+    const listRes = await fetch("https://contract.mexc.com/api/v1/contract/detail");
+    const listJson = await listRes.json();
 
-    if (!json || !json.data) {
+    if (!listJson || !listJson.data) {
       return res.status(500).json({
         success: false,
         error: "MEXC veri formatı hatalı",
-        raw: json
+        raw: listJson
       });
     }
 
-    // Bazı ortamlarda data obje, bazılarında dizi olabiliyor
-    const list = Array.isArray(json.data) ? json.data : [json.data];
+    // 👉 Sadece USDT perpetual sözleşmelerini filtrele
+    const usdtPerps = listJson.data.filter(c => c.symbol.endsWith("_USDT"));
 
-    // 🔥 SADECE USDT PERPETUAL FUTURES
-    const onlyUSDT = list.filter(
-      (item) => typeof item.symbol === "string" && item.symbol.endsWith("_USDT")
-    );
+    // Sözleşme adlarını al
+    const symbols = usdtPerps.map(c => c.symbol);
 
-    const processed = onlyUSDT.map((item, index) => {
-      const price = Number(item.lastPrice);          // Son fiyat
-      const changeRate = Number(item.riseFallRate);  // Örn: -0.0176  (% değil, oran)
-      const amount24 = Number(item.amount24);        // 24h notional hacim (USDT)
-      const volume24 = Number(item.volume24);        // 24h kontrat adedi
+    // 🔥 Tüm coinlerin güncel ticker verisini al
+    const tickRes = await fetch("https://contract.mexc.com/api/v1/contract/ticker");
+    const tickJson = await tickRes.json();
 
-      // 🔥 PumpScore: hem hacim hem değişim birleşik skor
-      const volumeScore = isNaN(amount24) ? 0 : amount24 / 1_000_000; // milyon USDT
-      const changeScore = isNaN(changeRate) ? 0 : changeRate * 100;   // % cinsinden
+    if (!tickJson || !tickJson.data) {
+      return res.status(500).json({
+        success: false,
+        error: "Ticker verisi okunamadı",
+        raw: tickJson
+      });
+    }
 
-      const pumpScore = Number((volumeScore * 0.4 + changeScore * 0.6).toFixed(2));
+    // Gelen tick verisini sözlük formatına çevir
+    const tickMap = {};
+    tickJson.data.forEach(t => {
+      tickMap[t.symbol] = t;
+    });
+
+    // 🔥 PumpScore hesaplama
+    function calcPumpScore(price, change, volume) {
+      if (!price || !volume) return 0;
+
+      const ch = change ? parseFloat(change) : 0;
+      const vol = parseFloat(volume);
+      const p = parseFloat(price);
+
+      return (Math.abs(ch) * 12) + (vol / 10000000) + (p / 5000);
+    }
+
+    // 🔥 Nihai coin listesi
+    const processed = symbols.map((sym, idx) => {
+      const t = tickMap[sym];
+
+      if (!t) {
+        return {
+          id: idx + 1,
+          symbol: sym,
+          price: null,
+          change: null,
+          volume: null,
+          exchange: "MEXC Futures",
+          pumpScore: 0
+        };
+      }
+
+      const price = parseFloat(t.lastPrice);
+      const change = parseFloat(t.changeRate * 100).toFixed(2);
+      const volume = parseFloat(t.volume);
+
+      const score = calcPumpScore(price, change, volume);
 
       return {
-        id: index + 1,
-        symbol: item.symbol,
-        price: isNaN(price) ? null : price,
-        change: isNaN(changeRate) ? null : changeRate, // oran
-        volume: isNaN(amount24) ? null : amount24,     // USDT bazlı hacim
-        contracts: isNaN(volume24) ? null : volume24,  // istersek sonra kullanırız
-        pumpScore,
-        exchange: "MEXC Futures"
+        id: idx + 1,
+        symbol: sym,
+        price: price,
+        change: change,
+        volume: volume,
+        exchange: "MEXC Futures",
+        pumpScore: parseFloat(score.toFixed(2))
       };
     });
 
-    // Server tarafında da skora göre sırala
+    // 🔥 PumpScore’a göre büyükten küçüğe sırala
     processed.sort((a, b) => b.pumpScore - a.pumpScore);
+
+    // 🔥 SADECE TOP 20
+    const top20 = processed.slice(0, 20);
 
     return res.status(200).json({
       success: true,
-      data: processed
+      data: top20
     });
+
   } catch (err) {
     return res.status(500).json({
       success: false,
