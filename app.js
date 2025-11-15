@@ -14,20 +14,20 @@ async function fetchData() {
     }
 
     const data = json.data;
-
     tableBody.innerHTML = "";
 
     data.forEach((coin, index) => {
       const row = document.createElement("tr");
 
       // fiyat
-      const price = coin.price ? coin.price.toFixed(4) : "-";
+      const price = isNaN(coin.price) ? "-" : coin.price.toFixed(4);
 
       // değişim rengi
-      const changeColor = coin.change >= 0 ? "lightgreen" : "red";
-      const changePercent = coin.change
-        ? (coin.change * 100).toFixed(2)
-        : "-";
+      const changeColor =
+        coin.change >= 0 ? "lightgreen" : "red";
+
+      const changePercent =
+        isNaN(coin.change) ? "-" : (coin.change * 100).toFixed(2);
 
       // hacim formatla
       const formatVolume = (v) => {
