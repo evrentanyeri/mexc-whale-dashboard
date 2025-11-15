@@ -1,79 +1,60 @@
+const API_URL = "/api/ticker";
+
+/* Hacim Formatlama B-M-K-T */
 function formatVolume(num) {
     if (!num || isNaN(num)) return "-";
 
-    const abs = Math.abs(num);
-
-    if (abs >= 1e12) return (num / 1e12).toFixed(2) + "T";
-    if (abs >= 1e9)  return (num / 1e9).toFixed(2) + "B";
-    if (abs >= 1e6)  return (num / 1e6).toFixed(2) + "M";
-    if (abs >= 1e3)  return (num / 1e3).toFixed(2) + "K";
-
-    return num.toFixed(2);
+    const n = Number(num);
+    if (n >= 1e12) return (n / 1e12).toFixed(2) + "T";
+    if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
+    if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
+    if (n >= 1e3) return (n / 1e3).toFixed(2) + "K";
+    return n.toFixed(2);
 }
 
 async function fetchData() {
     try {
-        const r = await fetch("/api/ticker");
-        const data = await r.json();
+        const res = await fetch(API_URL);
+        const json = await res.json();
 
-        if (!data.success || !data.data) {
-            throw new Error("API veri yapısı hatalı");
+        if (!json.success || !json.data) {
+            document.getElementById("signalBody").innerHTML =
+                `<tr><td colspan="7" class="loading">API Hatası</td></tr>`;
+            return;
         }
 
-        const tbody = document.getElementById("signalTableBody");
-        tbody.innerHTML = "";
+        let data = json.data;
 
-        const coins = data.data.slice(0, 20); // sadece ilk 20 coin
+        // SPOT KALDIR → sadece USDT perpet.
+        data = data.filter(coin => coin.symbol.endsWith("USDT"));
 
-        coins.forEach((coin, index) => {
+        // İlk 20 al
+        data = data.slice(0, 20);
 
-            // güvenli sayı dönüştürme
-            const price = Number(coin.price);
-            const change = Number(coin.change);
-            const volume = Number(coin.volume);
-            const pumpScore = Number(coin.pumpScore);
+        let html = "";
+        data.forEach((coin, i) => {
+            const changeColor = coin.change >= 0 ? "green" : "red";
 
-            // bozuk değerleri düzelt (NaN ise '-' göster)
-            const formattedPrice = isNaN(price) ? "-" : price.toFixed(4);
-            const formattedChange = isNaN(change) ? "-" : (change * 100).toFixed(2) + "%";
-            const formattedVolume = isNaN(volume) ? "-" : volume.toLocaleString();
-            const formattedPump = isNaN(pumpScore) ? "-" : pumpScore.toFixed(2);
-
-            const row = `
+            html += `
                 <tr>
-                    <td>${index + 1}</td>
+                    <td>${i + 1}</td>
                     <td>${coin.symbol}</td>
-                    <td>${formattedPrice}</td>
-
-                    <td style="color:${change >= 0 ? "lightgreen" : "red"}">
-                        ${formattedChange}
-                    </td>
-
-                    <td>${formattedVolume}</td>
+                    <td>${coin.price?.toFixed(4) ?? "-"}</td>
+                    <td class="${changeColor}">${(coin.change * 100).toFixed(2)}%</td>
+                    <td class="volume">${formatVolume(coin.volume)}</td>
                     <td>${coin.exchange}</td>
-
-                    <td style="color:${pumpScore >= 0 ? "gold" : "red"}">
-                        ${formattedPump}
-                    </td>
+                    <td class="pumpscore">${coin.pumpScore?.toFixed(2) ?? "0.00"}</td>
                 </tr>
             `;
-
-            tbody.innerHTML += row;
         });
 
-    } catch (err) {
-        console.error("Dashboard Hatası:", err);
+        document.getElementById("signalBody").innerHTML = html;
 
-        document.getElementById("signalTableBody").innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align:center;color:red;">
-                    Dashboard Hatası: ${err.message}
-                </td>
-            </tr>
-        `;
+    } catch (err) {
+        document.getElementById("signalBody").innerHTML =
+            `<tr><td colspan="7" class="loading">Dashboard Hatası</td></tr>`;
     }
 }
 
-// 5 saniyede bir yenile
-setInterval(fetchData, 5000);
 fetchData();
+setInterval(fetchData, 6000);
