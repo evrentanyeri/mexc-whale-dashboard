@@ -1,53 +1,52 @@
 export default async function handler(req, res) {
   try {
-    // 1) Coin listesini çek
-    const detailRes = await fetch("https://contract.mexc.com/api/v1/contract/detail");
-    const detailJson = await detailRes.json();
+    // MEXC Futures Ticker Endpoint
+    const r = await fetch("https://contract.mexc.com/api/v1/contract/ticker");
+    const json = await r.json();
 
-    if (!detailJson.data) {
-      return res.status(500).json({ success: false, error: "Sözleşme listesi alınamadı", raw: detailJson });
+    if (!json || !json.data) {
+      return res.status(500).json({
+        success: false,
+        error: "MEXC veri formatı hatalı",
+        raw: json
+      });
     }
 
-    const symbols = detailJson.data.map(c => c.symbol);
+    // 🔥 SADECE USDT PERPETUAL FUTURES
+    const onlyUSDT = json.data.filter(item => item.symbol.endsWith("_USDT"));
 
-    // Sadece ilk 30 coin’e ticker isteği
-    const limited = symbols.slice(0, 30);
+    // 🔥 PumpScore Hesaplama
+    const processed = onlyUSDT.map((item, index) => {
+      const price = parseFloat(item.lastPrice);
+      const change = parseFloat(item.riseFallRate);  // yüzde değişim
+      const volume = parseFloat(item.quoteVolume);   // quote vol (USDT hacmi)
 
-    const results = [];
+      // PumpScore formülü
+      const pumpScore =
+        (isNaN(volume) ? 0 : volume / 1_000_000) * 0.4 +
+        (isNaN(change) ? 0 : change * 2);
 
-    for (let i = 0; i < limited.length; i++) {
-      const sym = limited[i];
-
-      const tickerRes = await fetch(
-        `https://contract.mexc.com/api/v1/contract/ticker?symbol=${sym}`
-      );
-
-      const tickerJson = await tickerRes.json();
-
-      if (tickerJson.success && tickerJson.data) {
-        const d = tickerJson.data;
-        results.push({
-          id: i + 1,
-          symbol: sym,
-          price: Number(d.fairPrice || 0),
-          change: Number(d.riseFallRate || 0),
-          volume: Number(d.volume24 || 0),
-          exchange: "MEXC Futures"
-        });
-      }
-    }
-
-    // Pump Score
-    results.forEach(r => {
-      r.pumpScore = Number(((r.volume / 1_000_000) * 0.4 + r.change * 2).toFixed(2));
+      return {
+        id: index + 1,
+        symbol: item.symbol,
+        price: isNaN(price) ? null : price,
+        change: isNaN(change) ? null : change,
+        volume: isNaN(volume) ? null : volume,
+        pumpScore: parseFloat(pumpScore.toFixed(2)),
+        exchange: "MEXC Futures"
+      };
     });
 
-    // Skorla sırala + İlk 20
-    const finalData = results.sort((a, b) => b.pumpScore - a.pumpScore).slice(0, 20);
-
-    return res.status(200).json({ success: true, data: finalData });
+    res.status(200).json({
+      success: true,
+      data: processed
+    });
 
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.toString() });
+    res.status(500).json({
+      success: false,
+      error: "MEXC bağlantı hatası",
+      details: err.toString()
+    });
   }
 }
