@@ -1,93 +1,58 @@
 export default async function handler(req, res) {
   try {
-    const listRes = await fetch("https://contract.mexc.com/api/v1/contract/detail");
-    const listJson = await listRes.json();
+    const r = await fetch("https://contract.mexc.com/api/v1/contract/ticker");
+    const data = await r.json();
 
-    if (!listJson || !listJson.data) {
+    if (!data || !Array.isArray(data.data)) {
       return res.status(500).json({
         success: false,
-        error: "MEXC sözleşme listesi hatalı",
-        raw: listJson
+        error: "MEXC veri formatı hatalı",
+        raw: data
       });
     }
 
-    const symbols = listJson.data
-      .filter(c => c.symbol.endsWith("_USDT"))
-      .map(c => c.symbol);
+    // USDT Perpetual filtrele
+    const usdtFutures = data.data.filter(item =>
+      item.symbol.endsWith("_USDT")
+    );
 
-    const results = [];
+    // PumpScore hesapla & formatla
+    const processed = usdtFutures.map((item, index) => ({
+      id: index + 1,
+      symbol: item.symbol,
+      price: parseFloat(item.lastPrice).toFixed(4),
+      change: (parseFloat(item.riseFallRate) * 100).toFixed(2),
+      volume: parseFloat(item.volume).toFixed(2),
+      exchange: "MEXC Futures",
+      pumpScore: calcPumpScore(item)
+    }));
 
-    function calcPumpScore(price, change, volume) {
-      if (!price || !volume) return 0;
-      return (
-        Math.abs(change) * 12 +
-        volume / 10000000 +
-        price / 8000
-      );
+    // PumpScore hesaplama fonksiyonu
+    function calcPumpScore(item) {
+      const change = Math.abs(parseFloat(item.riseFallRate) * 100);
+      const vol = parseFloat(item.volume);
+
+      if (isNaN(change) || isNaN(vol)) return 0;
+
+      // 🔥 Pump algoritması
+      return (change * 3 + Math.log10(vol + 1) * 15).toFixed(2);
     }
 
-    for (let i = 0; i < symbols.length; i++) {
-      const sym = symbols[i];
-      try {
-        const tickRes = await fetch(
-          `https://contract.mexc.com/api/v1/contract/ticker?symbol=${sym}`
-        );
-        const tickJson = await tickRes.json();
+    // 🔥 PumpScore'a göre sırala
+    processed.sort((a, b) => b.pumpScore - a.pumpScore);
 
-        if (!tickJson || !tickJson.data) {
-          results.push({
-            id: i + 1,
-            symbol: sym,
-            price: null,
-            change: null,
-            volume: null,
-            pumpScore: 0,
-            exchange: "MEXC Futures"
-          });
-          continue;
-        }
+    // 🔥 İlk 20'yi gönder
+    const top20 = processed.slice(0, 20);
 
-        const t = tickJson.data;
-        const price = parseFloat(t.lastPrice || 0);
-        const change = parseFloat((t.changeRate || 0) * 100);
-        const volume = parseFloat(t.volume || 0);
-
-        results.push({
-          id: i + 1,
-          symbol: sym,
-          price,
-          change,
-          volume,
-          pumpScore: parseFloat(calcPumpScore(price, change, volume).toFixed(2)),
-          exchange: "MEXC Futures"
-        });
-
-      } catch (err) {
-        results.push({
-          id: i + 1,
-          symbol: sym,
-          price: null,
-          change: null,
-          volume: null,
-          pumpScore: 0,
-          exchange: "MEXC Futures"
-        });
-      }
-    }
-
-    const top20 = results
-      .sort((a, b) => b.pumpScore - a.pumpScore)
-      .slice(0, 20);
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: top20
     });
 
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      error: "Sunucu hatası",
+      error: "API Hatası",
       details: err.toString()
     });
   }
