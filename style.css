@@ -1,28 +1,155 @@
+body {
+    background: #0b1220;
+    color: white;
+    font-family: "Courier New", monospace;
+    text-align: center;
+}
+
+header h1 {
+    font-size: 38px;
+    margin-top: 25px;
+    text-shadow: 0 0 15px #3ac1ff;
+}
+
+h2 {
+    font-size: 30px;
+    margin-bottom: 25px;
+}
+
+.table-container {
+    width: 95%;
+    margin: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 20px;
+}
+
+thead th {
+    padding: 14px;
+    font-size: 22px;
+    letter-spacing: 2px;
+}
+
+tbody tr {
+    background: rgba(255,255,255,0.03);
+    margin-bottom: 6px;
+    border-radius: 10px;
+}
+
+tbody tr:hover {
+    background: rgba(255,255,255,0.08);
+    transition: 0.15s;
+}
+
+td {
+    padding: 12px;
+}
+
 /* ===========================
-   RSI BAR TASARIMI
+   HACİM – NEON MAVİ
 =========================== */
-
-.rsi-cell {
-    font-weight: bold;
-    font-size: 18px;
-    white-space: nowrap;
+td.volume {
+    color: #33ccff;
+    font-weight: 700;
+    text-shadow: 
+        0 0 8px #33ccff,
+        0 0 16px #33ccff;
 }
 
-.rsi-bar {
-    letter-spacing: 1px;
-    color: #7fd1ff; /* açık mavi */
-    font-size: 18px;
-    font-weight: bold;
-    text-shadow:
-        0 0 6px #3ac1ff,
-        0 0 12px #3ac1ff;
+/* ===========================
+   PUMP SCORE – NEON SINIFLARI
+=========================== */
+.pump-high,
+.pump-mid,
+.pump-low {
+    font-weight: 800;
+    font-size: 1.2rem;
+    padding: 4px 10px;
+    border-radius: 8px;
 }
 
-.rsi-num {
-    color: #a8ff9e;
-    font-size: 18px;
-    margin-left: 8px;
+.pump-high {
+    color: #ffea00;
     text-shadow:
-        0 0 6px #8cff3b,
-        0 0 12px #71ff17;
+        0 0 10px #ffea00,
+        0 0 20px #ffd900,
+        0 0 30px #ffcc00,
+        0 0 45px #ffaa00;
+}
+
+.pump-mid {
+    color: #b6ff7a;
+    text-shadow:
+        0 0 6px #b6ff7a,
+        0 0 14px #8cff3b;
+}
+
+.pump-low {
+    color: #fff5b0;
+    opacity: 0.8;
+    text-shadow:
+        0 0 4px #fff1a3;
+}
+
+/* ===========================
+   RSI (Sadece sayı)
+=========================== */
+td.rsi {
+    font-weight: 700;
+    color: #9bd6ff;
+    text-shadow: 0 0 10px #4da3ff;
+}
+
+/* Değişim renkleri */
+.red { color: #ff4d4d; }
+.green { color: #4dff7a; }
+
+/* Yükleniyor */
+.loading {
+    padding: 30px;
+    font-size: 22px;
+    text-shadow: 0 0 10px white;
+}
+
+/* ===========================
+   SAĞ ÜST GERİ SAYIM BALONU
+=========================== */
+#refreshCircle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    background: rgba(0, 200, 255, 0.15);
+    border: 2px solid #00eaff;
+    box-shadow:
+        0 0 10px #00eaff,
+        0 0 20px #00eaff,
+        inset 0 0 10px #0088aa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 26px;
+    color: #ffea00;
+    font-weight: 800;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+    animation: pulse 2s infinite ease-in-out;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); box-shadow: 0 0 15px #00eaff; }
+    50% { transform: scale(1.08); box-shadow: 0 0 25px #00eaff; }
+    100% { transform: scale(1); box-shadow: 0 0 15px #00eaff; }
+}
+
+#refreshCircle span {
+    font-size: 28px;
+    text-shadow:
+        0 0 8px #ffea00,
+        0 0 15px #ffaa00;
 }
