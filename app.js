@@ -10,8 +10,37 @@ function pumpClass(score) {
     if (isNaN(score)) return "pump-low";
 
     if (score > 100) return "pump-high";
-    if (score > 20) return "pump-mid";
+    if (score > 20)  return "pump-mid";
     return "pump-low";
+}
+
+/* ------------------------------
+   RSI Hesaplama (yaklaşık RSI)
+-------------------------------- */
+function calculateRSI(changeRatio) {
+    // changeRatio = 0.03 => %3
+    const pct = changeRatio * 100;
+
+    // basite indirgenmiş (fiyat ivmesi ağırlıklı)
+    let rsi = 50 + pct * 2;
+
+    if (rsi > 100) rsi = 100;
+    if (rsi < 0)   rsi = 0;
+
+    return Number(rsi.toFixed(2));
+}
+
+/* ------------------------------
+   RSI BAR Oluşturma
+-------------------------------- */
+function rsiBar(rsi) {
+    const total = 20; // toplam blok
+    const filled = Math.round((rsi / 100) * total);
+    const empty = total - filled;
+
+    const bar = "■".repeat(filled) + "□".repeat(empty);
+
+    return `<span class="rsi-bar">[${bar}]</span> <span class="rsi-num">${rsi}</span>`;
 }
 
 /* ------------------------------
@@ -32,18 +61,17 @@ function formatVolume(num) {
 -------------------------------- */
 async function fetchData() {
     try {
-        console.log("Veri çekiliyor...");    // DEBUG
+        console.log("Veri çekiliyor...");
 
-        const res = await fetch(API_URL + "?t=" + Date.now()); 
+        const res = await fetch(API_URL + "?t=" + Date.now());
         const json = await res.json();
 
         if (!json.success || !json.data) {
             document.getElementById("signalBody").innerHTML =
-                `<tr><td colspan="7" class="loading">API Hatası</td></tr>`;
+                `<tr><td colspan="8" class="loading">API Hatası</td></tr>`;
             return;
         }
 
-        // USDT çiftleri + ilk 20 filtre
         let data = json.data
             .filter(c => c.symbol.endsWith("USDT"))
             .slice(0, 20);
@@ -51,51 +79,13 @@ async function fetchData() {
         let html = "";
         data.forEach((coin, i) => {
 
-            // PRICE
             const price = Number(coin.price) || 0;
 
-            // CHANGE
             const rawChange = Number(coin.change);
             const change = isNaN(rawChange) ? 0 : rawChange;
             const changePercent = (change * 100).toFixed(2);
             const changeColor = change >= 0 ? "green" : "red";
 
-            // VOLUME
             const volume = formatVolume(coin.volume);
 
-            // PUMP SCORE (Neon)
-            const pumpScore =
-                isNaN(Number(coin.pumpScore)) ? 0 : Number(coin.pumpScore);
-
-            html += `
-                <tr>
-                    <td>${i + 1}</td>
-                    <td>${coin.symbol}</td>
-                    <td>${price.toFixed(4)}</td>
-                    <td class="${changeColor}">${changePercent}%</td>
-                    <td class="volume">${volume}</td>
-                    <td>${coin.exchange}</td>
-
-                    <!-- PUMP SCORE - NEON -->
-                    <td>
-                        <span class="${pumpClass(pumpScore)}">
-                            ${pumpScore.toFixed(2)}
-                        </span>
-                    </td>
-                </tr>
-            `;
-        });
-
-        document.getElementById("signalBody").innerHTML = html;
-        console.log("Tablo güncellendi.");   // DEBUG
-
-    } catch (err) {
-        console.error("Fetch Hatası:", err);
-    }
-}
-
-/* ------------------------------
-   Otomatik Güncelleme
--------------------------------- */
-fetchData();
-setInterval(fetchData, 6000);
+            const pumpScore = isNaN(Number(coin.pumpSc
