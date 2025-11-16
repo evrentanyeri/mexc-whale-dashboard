@@ -9,42 +9,13 @@ function pumpClass(score) {
     score = Number(score);
     if (isNaN(score)) return "pump-low";
 
-    if (score > 100) return "pump-high";
-    if (score > 20)  return "pump-mid";
+    if (score > 70) return "pump-high";
+    if (score > 30) return "pump-mid";
     return "pump-low";
 }
 
 /* ------------------------------
-   RSI Hesaplama (yaklaşık RSI)
--------------------------------- */
-function calculateRSI(changeRatio) {
-    // changeRatio = 0.03 => %3
-    const pct = changeRatio * 100;
-
-    // basite indirgenmiş (fiyat ivmesi ağırlıklı)
-    let rsi = 50 + pct * 2;
-
-    if (rsi > 100) rsi = 100;
-    if (rsi < 0)   rsi = 0;
-
-    return Number(rsi.toFixed(2));
-}
-
-/* ------------------------------
-   RSI BAR Oluşturma
--------------------------------- */
-function rsiBar(rsi) {
-    const total = 20; // toplam blok
-    const filled = Math.round((rsi / 100) * total);
-    const empty = total - filled;
-
-    const bar = "■".repeat(filled) + "□".repeat(empty);
-
-    return `<span class="rsi-bar">[${bar}]</span> <span class="rsi-num">${rsi}</span>`;
-}
-
-/* ------------------------------
-   Hacim Formatlama
+   HACİM FORMATLAMA
 -------------------------------- */
 function formatVolume(num) {
     if (!num || isNaN(num)) return "-";
@@ -57,7 +28,27 @@ function formatVolume(num) {
 }
 
 /* ------------------------------
-   Veri Çekme ve Tablo Güncelleme
+   RSI BAR OLUŞTURMA
+-------------------------------- */
+function makeRSIBar(rsi) {
+    rsi = Number(rsi);
+    if (isNaN(rsi)) rsi = 50;
+
+    const filled = Math.round((rsi / 100) * 20);
+    const empty = 20 - filled;
+
+    const bar =
+        "[" +
+        "■".repeat(filled) +
+        "□".repeat(empty) +
+        "]";
+
+    return `<span class="rsi-bar">${bar}</span> 
+            <span class="rsi-num">${rsi.toFixed(0)}</span>`;
+}
+
+/* ------------------------------
+   VERİ ÇEKME
 -------------------------------- */
 async function fetchData() {
     try {
@@ -72,20 +63,51 @@ async function fetchData() {
             return;
         }
 
+        // İlk 20 USDT çiftleri
         let data = json.data
             .filter(c => c.symbol.endsWith("USDT"))
             .slice(0, 20);
 
         let html = "";
-        data.forEach((coin, i) => {
 
+        data.forEach((coin, i) => {
             const price = Number(coin.price) || 0;
 
-            const rawChange = Number(coin.change);
-            const change = isNaN(rawChange) ? 0 : rawChange;
-            const changePercent = (change * 100).toFixed(2);
+            // Değişim
+            const change = Number(coin.change);
+            const changePercent = isNaN(change) ? "0.00" : (change * 100).toFixed(2);
             const changeColor = change >= 0 ? "green" : "red";
 
+            // Hacim
             const volume = formatVolume(coin.volume);
 
-            const pumpScore = isNaN(Number(coin.pumpSc
+            // PumpScore
+            const pumpScore = Number(coin.pumpScore) || 0;
+
+            // RSI
+            const rsi = Number(coin.rsi) || 50;   // Sunucudan rsi yoksa 50 varsay
+
+            html += `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${coin.symbol}</td>
+                    <td>${price.toFixed(4)}</td>
+                    <td class="${changeColor}">${changePercent}%</td>
+                    <td class="volume">${volume}</td>
+                    <td>${coin.exchange}</td>
+                    <td><span class="${pumpClass(pumpScore)}">${pumpScore.toFixed(2)}</span></td>
+                    <td class="rsi-cell">${makeRSIBar(rsi)}</td>
+                </tr>
+            `;
+        });
+
+        document.getElementById("signalBody").innerHTML = html;
+        console.log("Tablo güncellendi.");
+
+    } catch (err) {
+        console.error("Fetch Hatası:", err);
+    }
+}
+
+fetchData();
+setInterval(fetchData, 6000);
