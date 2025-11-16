@@ -28,26 +28,6 @@ function formatVolume(num) {
 }
 
 /* ------------------------------
-   RSI BAR OLUŞTURMA
--------------------------------- */
-function makeRSIBar(rsi) {
-    rsi = Number(rsi);
-    if (isNaN(rsi)) rsi = 50;
-
-    const filled = Math.round((rsi / 100) * 20);
-    const empty = 20 - filled;
-
-    const bar =
-        "[" +
-        "■".repeat(filled) +
-        "□".repeat(empty) +
-        "]";
-
-    return `<span class="rsi-bar">${bar}</span> 
-            <span class="rsi-num">${rsi.toFixed(0)}</span>`;
-}
-
-/* ------------------------------
    VERİ ÇEKME
 -------------------------------- */
 async function fetchData() {
@@ -84,8 +64,8 @@ async function fetchData() {
             // PumpScore
             const pumpScore = Number(coin.pumpScore) || 0;
 
-            // RSI
-            const rsi = Number(coin.rsi) || 50;   // Sunucudan rsi yoksa 50 varsay
+            // RSI (sunucudan gelmiyorsa 50 veriyoruz)
+            const rsi = Number(coin.rsi) || 50;
 
             html += `
                 <tr>
@@ -95,8 +75,15 @@ async function fetchData() {
                     <td class="${changeColor}">${changePercent}%</td>
                     <td class="volume">${volume}</td>
                     <td>${coin.exchange}</td>
-                    <td><span class="${pumpClass(pumpScore)}">${pumpScore.toFixed(2)}</span></td>
-                    <td class="rsi-cell">${makeRSIBar(rsi)}</td>
+
+                    <td><span class="${pumpClass(pumpScore)}">
+                        ${pumpScore.toFixed(2)}
+                    </span></td>
+
+                    <!-- SADE RSI SAYISI -->
+                    <td class="rsi-num">
+                        ${rsi.toFixed(2)}
+                    </td>
                 </tr>
             `;
         });
