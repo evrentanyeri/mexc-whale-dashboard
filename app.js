@@ -1,6 +1,6 @@
 console.log("Dashboard JS Yüklendi");   // DEBUG
 
-const API_URL = "http://212.16.87.119:3000/ticker";
+const API_URL = "https://api.chainove.com";
 
 /* ------------------------------
    PumpScore Neon Class Function
