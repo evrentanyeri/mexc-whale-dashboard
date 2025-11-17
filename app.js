@@ -1,6 +1,6 @@
 console.log("Dashboard JS Yüklendi");   // DEBUG
 
-const API_URL = "https://api.chainove.com";
+const API_URL = "http://api.chainove.com";
 
 /* ------------------------------
    PumpScore Neon Class Function
